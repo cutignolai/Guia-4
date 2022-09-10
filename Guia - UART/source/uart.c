@@ -13,19 +13,18 @@
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
+//TX
 #define UART0_TX		DIO_20
-#define UART0_RX		DIO_25
-
 #define UART1_TX		DIO_21
-#define UART1_RX		DIO_26
-
 #define UART2_TX		DIO_22
-#define UART2_RX		DIO_27
-
 #define UART3_TX		DIO_23
-#define UART3_RX		DIO_28
-
 #define UART4_TX		DIO_24
+
+//RX
+#define UART0_RX		DIO_25
+#define UART1_RX		DIO_26
+#define UART2_RX		DIO_27
+#define UART3_RX		DIO_28
 #define UART4_RX		DIO_29
 
 
@@ -96,5 +95,5 @@ uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
  * @return All bytes were transfered
 */
 uint8_t uartIsTxMsgComplete(uint8_t id){
-    
+
 }
