@@ -12,24 +12,38 @@
  ******************************************************************************/
 
 #include <stdint.h>
+#include "MK64F12.h"
 
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
+#define CPU_MK64FN1M0VLL12
 
-#define UART_CANT_IDS   5
+#if defined(CPU_MK64FN1M0VLL12) || defined(CPU_MK64FX512VLL12)
+	#define UART_CANT_IDS   5
+#elif defined(CPU_MK64FN1M0CAJ12) || defined(CPU_MK64FN1M0VDC12) || defined(CPU_MK64FN1M0VLQ12) || defined(CPU_MK64FN1M0VMD12) || \
+    defined(CPU_MK64FX512VDC12) || defined(CPU_MK64FX512VLQ12) || defined(CPU_MK64FX512VMD12)
+	#define UART_CANT_IDS   6
+#endif
 
+#define PARITY_YES		true
+#define PARITY_NO		!PARITY_YES
+
+#define PARITY_EVEN		true
+#define PARITY_ODD		!PARITY_EVEN
 
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/
 
 typedef struct {
-    uint8_t start : 1;
-    uint8_t data;
-    uint8_t parity : 1;
-    uint8_t stop : 1;
+    uint8_t baud_rate;   // Numeros de cambio de la senial por segundo
+    bool want_parity;
+	bool data_9bits;
+    bool parity_type;     
+    uint8_t bit_rate;    // Bits por segundo
+    //etc
 } uart_cfg_t;
 
 
