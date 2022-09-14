@@ -12,6 +12,7 @@
  ******************************************************************************/
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "MK64F12.h"
 
 
@@ -39,9 +40,11 @@
 
 typedef struct {
     uint8_t baud_rate;   // Numeros de cambio de la senial por segundo
+    bool non_blocking;
     bool want_parity;
 	bool data_9bits;
     bool parity_type;     
+    bool double_stop_bit;
     uint8_t bit_rate;    // Bits por segundo
     //etc
 } uart_cfg_t;

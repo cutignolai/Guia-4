@@ -14,7 +14,6 @@
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
 
-
 //TX
 #define UART0_TX		DIO_20
 #define UART1_TX		DIO_21
@@ -36,8 +35,6 @@
 // UART4: TX = PTE25	RX = PTE24	---> UART4 = PORTE
 
 
-
-
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/
@@ -45,40 +42,28 @@
 /*******************************************************************************
  * VARIABLE PROTOTYPES WITH GLOBAL SCOPE
  ******************************************************************************/
- /**
- * @brief Set de Baud Rate
- * @param uart UART pointer
- * @param baudrate config.baudrate
- * @return Nothing
-*/
+
+void UART_EnableClockGating(uint8_t id);
+
+void UART_DisableTxRx(UART_Type *uart);
+
 void UART_SetBaudRate (UART_Type *uart, uint32_t baudrate);
 
-
-/**
- * @brief Set Parity
- * @param uart UART pointer
- * @param parity parity mode
- * @return Nothing
-*/
 void UART_SetParity(UART_Type * uartX_ptr, bool want_parity, bool parity);
 
-/**
- * @brief Set data size
- * @param uart UART pointer
- * @param data_9bits set de 9th bit 
- * @return Nothing
-*/
 void UART_SetDataSize(UART_Type * uartX_ptr, bool data_9bits);
 
+void UART_SetStopBit(UART_Type * uartX_ptr, bool double_stop_bit);
 
+void UART_EnableTxRx(UART_Type *uart);
  
 
 static UART_Type* const UART_ptrs[] = UART_BASE_PTRS;		// { UART0, UART1, UART2, UART3, UART4, UART5 } (Ver MK64F12.h)
 static PORT_Type * const addr_arrays[] = {PORTA, PORTC, PORTD, PORTC, PORTE};
 
-static const TX_PINS[] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX}
-static const RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX}
-static bool uart_is_used [UART_CANT_IDS] = {false, false, false, false, false};
+static const TX_PINS[] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX};
+static const RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX};
+static bool uart_is_used[UART_CANT_IDS] = {false, false, false, false, false};
 
 /*******************************************************************************
  * FUNCTION PROTOTYPES WITH GLOBAL SCOPE
@@ -95,43 +80,10 @@ void uartInit (uint8_t id, uart_cfg_t config)
 		return;
   	}
 
-
-	/* 
-	*	CLOCK GATING
-	*
-	*	Antes de usar un modulo se debe habilitar el clock de locontrario se genera un error.
-	*	De igual forma antes de apagarun clock se deberá deshabilitar el modulo.
-	*/
-	switch(id)
-	{
-		case 0:
-			SIM->SCGC4 |= SIM_SCGC4_UART0_MASK;
-			break;
-		
-		case 1:
-			SIM->SCGC4 |= SIM_SCGC4_UART1_MASK;
-			break;
-
-		case 2:
-			SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
-			break;
-
-		case 3:
-			SIM->SCGC4 |= SIM_SCGC4_UART3_MASK;
-			break;
-		
-		case 4:
-			SIM->SCGC1 |= SIM_SCGC1_UART4_MASK;
-			break;
-		
-		case 5:
-			SIM->SCGC1 |= SIM_SCGC1_UART5_MASK;
-			break;
-	}
-
+	UART_EnableClockGating(id);			// Clock gating para la UART
 	
 	// PIN SETUP
-	UART_Type* uartX_ptr =	UART_CANT_IDS[id];
+	UART_Type* uartX_ptr = UART_ptrs[id];
 	PORT_Type* port_ptr = addr_arrays[id];
 	static const UARTX_TX_PIN = TX_PINS[id];
 	static const UARTX_RX_PIN = RX_PINS[id];
@@ -154,30 +106,28 @@ void uartInit (uint8_t id, uart_cfg_t config)
 
 	/*
 	 * Deshabilito la UART para configurar sin problemas
-	 * FIXME: --> Si no anda, hay que deshabilidar las interrupciones tambien
+	 * FIXME: --> Si no anda, hay que deshabilitar las interrupciones tambien
 	*/
-	uartX_ptr->C2 &= !( UART_C2_TE_MASK | UART_C2_RE_MASK);
-	/*
-	 * Limpio C1 completo, me olvido de la paridad
-	*/
-	uart->C1 = 0x0;
+	// Deshabilito comunicación
+	UART_DisableTxRx(uartX_ptr);
 
-	//
-	UART_SetBaudRate (uartX_ptr, config.baudrate);			//CONFIGURO EL BAUD RATE
+	uartX_ptr->C1 = 0x0;	// Clear C1
 
-	//
+	UART_SetBaudRate(uartX_ptr, config.baud_rate);
+
 	UART_SetParity(uartX_ptr, config.want_parity, config.parity_type);
 
-	//
 	UART_SetDataSize(uartX_ptr, config.data_9bits);
 
+	UART_SetStopBit(uartX_ptr, config.double_stop_bit);
 
-	/*
-	 * Lo ultimo que hago es habilitar el UART
-	 * Activo el transmisor, el receptor y las interrupciones
-	*/
-	uartX_ptr->C2 = (UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK);
+	// TODO: 
+	//- habilitar puertos
+	//- habilitar interrupción dedicada
+	//- MODOS: bloq vs no
 
+	// Habilito comunicación
+	UART_EnableTxRx(uartX_ptr);
 
 	/*
 	switch(id) { // enable interrupts!
@@ -195,9 +145,6 @@ void uartInit (uint8_t id, uart_cfg_t config)
 	
 	
 	*/
-
-
-
 }
 
 
@@ -254,34 +201,83 @@ uint8_t uartIsTxMsgComplete(uint8_t id){
 /*******************************************************************************
  * FUNCTION PROTOTYPES WITH LOCAL SCOPE
  ******************************************************************************/
+
+/**
+ * @brief Enable Clock Gating for specific UART
+ * @param id UART to enable
+ */
+void UART_EnableClockGating(uint8_t id){
+	switch(id)
+	{
+		case 0:
+			SIM->SCGC4 |= SIM_SCGC4_UART0_MASK;
+			break;
+		
+		case 1:
+			SIM->SCGC4 |= SIM_SCGC4_UART1_MASK;
+			break;
+
+		case 2:
+			SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
+			break;
+
+		case 3:
+			SIM->SCGC4 |= SIM_SCGC4_UART3_MASK;
+			break;
+		
+		case 4:
+			SIM->SCGC1 |= SIM_SCGC1_UART4_MASK;
+			break;
+		
+		case 5:
+			SIM->SCGC1 |= SIM_SCGC1_UART5_MASK;
+			break;
+	}
+}
+
+/**
+ * @brief Disables UART's serial communication
+ * @param uart UART peripheral base pointer
+ */
+void UART_DisableTxRx(UART_Type *uart){
+	uart->C2 &= !( UART_C2_TE_MASK | UART_C2_RE_MASK);
+}
+
+/**
+ * @brief Enables UART's serial communication
+ * @param uart UART peripheral base pointer
+ */
+void UART_EnableTxRx(UART_Type *uart){
+	uart->C2 = (UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK);
+}
+
 /**
  * @brief Set de Baud Rate
  * @param uart UART pointer
  * @param baudrate config.baudrate
- * @return Nothing
 */
-void UART_SetBaudRate (UART_Type *uart, uint32_t baudrate){
+void UART_SetBaudRate(UART_Type *uart, uint32_t baudrate){
 	uint16_t sbr, brfa;
 	uint32_t clock;
 
-	clock = ((uart == UART0) || (uart == UART1))?(__CORE_CLOCK__):(__CORE_CLOCK__ >> 1);
+	clock = ((uart == UART0) || (uart == UART1)) ? (__CORE_CLOCK__) : (__CORE_CLOCK__ >> 1);
 	
-	baudrate = ((baudrate == 0)? (UART HAL DEFAULT BAUDRATE) :
+	baudrate = ((baudrate == 0)? (UART_HAL_DEFAULT_BAUDRATE) :
 	((baudrate > 0x1FFF)? (UART_HAL_DEFAULT_BAUDRATE): (baudrate)));
 
-	sbr = clock (baudrate << 4);
+	sbr = clock / (baudrate << 4);
 	brfa = (clock << 1) / baudrate - (sbr << 5);
 	uart->BDH = UART_BDH_SBR(sbr >> 8); 
-	uart->BDL = UART_BDL_SBR (sbr); 
+	uart->BDL = UART_BDL_SBR(sbr); 
 	uart->C4 = (uart->C4 & ~UART_C4_BRFA_MASK) | UART_C4_BRFA(brfa);
 }
 
-
-/** @brief 
- * @param uart UART pointer
- * @param baudrate config.baudrate
- * @return Nothing
-*/
+/**
+ * @brief Set communication with or without parity
+ * @param uartX_ptr UART peripheral base pointer
+ * @param want_parity True to enable parity, false to exclude parity bit
+ * @param parity_type If parity enabled, set EVEN if true or ODD if false. Ignored if parity disabled
+ */
 void UART_SetParity(UART_Type * uartX_ptr, bool want_parity, bool parity_type){
 	if(want_parity == PARITY_YES){
 		uartX_ptr->C1 |= UART_C1_PE_MASK;
@@ -298,12 +294,31 @@ void UART_SetParity(UART_Type * uartX_ptr, bool want_parity, bool parity_type){
 	
 }
 
+/**
+ * @brief Set amount of data bits
+ * @param uartX_ptr UART peripheral base pointer
+ * @param data_9bits True to use 9 data bits, false to use 8 data bits
+ */
 void UART_SetDataSize(UART_Type * uartX_ptr, bool data_9bits){
 	if(data_9bits){
 		uartX_ptr->C1 |= UART_C1_M_MASK;
 	}
 	else{
 		uartX_ptr->C1 &= !UART_C1_M_MASK;
+	}
+}
+
+/**
+ * @brief Set amount of stop bits
+ * @param uartX_ptr UART peripheral base pointer
+ * @param double_stop_bit True to use 2 stop bits, false to use 1 stop bit
+ */
+void UART_SetStopBit(UART_Type * uartX_ptr, bool double_stop_bit){
+	if(double_stop_bit){
+		uartX_ptr->BDH |= UART_BDH_SBNS_MASK;
+	}
+	else{
+		uartX_ptr->BDH &= !UART_BDH_SBNS_MASK;
 	}
 }
 
