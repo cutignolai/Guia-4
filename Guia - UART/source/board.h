@@ -21,9 +21,9 @@
 /***** BOARD defines **********************************************************/
 
 // On Board User LEDs
-#define PIN_LED_RED     PORTNUM2PIN(PB,22)    // PTB22
-#define PIN_LED_GREEN   PORTNUM2PIN(PE,26)    // PTE26
-#define PIN_LED_BLUE    PORTNUM2PIN(PB,21)    // PTB21
+#define PIN_LED_RED     PORTNUM2PIN(PB, 22)    // PTB22
+#define PIN_LED_GREEN   PORTNUM2PIN(PE, 26)    // PTE26
+#define PIN_LED_BLUE    PORTNUM2PIN(PB, 21)    // PTB21
 
 #define LED_ACTIVE      LOW
 #define LED_DESACTIVE   HIGH
@@ -59,12 +59,12 @@
 #define DIO_15          PORTNUM2PIN(PB, 19)	    // PTB19
 
 
-#define DIO_16          PORTNUM2PIN(PB,11)	    // PTB11
-#define DIO_17          PORTNUM2PIN(PC,11)	    // PTC11
-#define DIO_18          PORTNUM2PIN(PC,10)	    // PTC10
+#define DIO_16          PORTNUM2PIN(PB, 11)	    // PTB11
+#define DIO_17          PORTNUM2PIN(PC, 11)	    // PTC11
+#define DIO_18          PORTNUM2PIN(PC, 10)	    // PTC10
 
 //TEST PIN
-#define DIO_19          PORTNUM2PIN(PB,10)	    // PTC10
+#define DIO_19          PORTNUM2PIN(PB, 10)	    // PTC10
 
 
 //UARTS

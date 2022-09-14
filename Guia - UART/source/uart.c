@@ -4,15 +4,18 @@
   @author   Oli, Cuty y Micho
  ******************************************************************************/
 
+#include <stdbool.h>
 #include "MK64F12.h"
+#include "hardware.h"
 #include "uart.h"
 #include "gpio.h"
 #include "board.h"
-#include <stdbool.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
+
+#define UART_HAL_DEFAULT_BAUDRATE 9600
 
 //TX
 #define UART0_TX		DIO_20
@@ -61,8 +64,8 @@ void UART_EnableTxRx(UART_Type *uart);
 static UART_Type* const UART_ptrs[] = UART_BASE_PTRS;		// { UART0, UART1, UART2, UART3, UART4, UART5 } (Ver MK64F12.h)
 static PORT_Type * const addr_arrays[] = {PORTA, PORTC, PORTD, PORTC, PORTE};
 
-static const TX_PINS[] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX};
-static const RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX};
+static const pin_t TX_PINS[] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX};
+static const pin_t RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX};
 static bool uart_is_used[UART_CANT_IDS] = {false, false, false, false, false};
 
 /*******************************************************************************
@@ -85,13 +88,13 @@ void uartInit (uint8_t id, uart_cfg_t config)
 	// PIN SETUP
 	UART_Type* uartX_ptr = UART_ptrs[id];
 	PORT_Type* port_ptr = addr_arrays[id];
-	static const UARTX_TX_PIN = TX_PINS[id];
-	static const UARTX_RX_PIN = RX_PINS[id];
+	static const pin_t UARTX_TX_PIN = TX_PINS[id];
+	static const pin_t UARTX_RX_PIN = RX_PINS[id];
 
 	// TODO: Cambiar el MUX y IRQC
 	// TX:
 	port_ptr->PCR[UARTX_TX_PIN]=0x0; //Clear all bits
-	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_MUX(PORT_mAlt3); //Set MUX to UART0
+	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_MUX(PORT_mAlt3); //Set MUX to UART
 	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_IRQC(PORT_eDisabled); //Disable Port interrupts
 	
 	// RX:
@@ -262,8 +265,7 @@ void UART_SetBaudRate(UART_Type *uart, uint32_t baudrate){
 
 	clock = ((uart == UART0) || (uart == UART1)) ? (__CORE_CLOCK__) : (__CORE_CLOCK__ >> 1);
 	
-	baudrate = ((baudrate == 0)? (UART_HAL_DEFAULT_BAUDRATE) :
-	((baudrate > 0x1FFF)? (UART_HAL_DEFAULT_BAUDRATE): (baudrate)));
+	baudrate = ((baudrate == 0)? (UART_HAL_DEFAULT_BAUDRATE) : ((baudrate > 0x1FFF)? (UART_HAL_DEFAULT_BAUDRATE): (baudrate)));
 
 	sbr = clock / (baudrate << 4);
 	brfa = (clock << 1) / baudrate - (sbr << 5);

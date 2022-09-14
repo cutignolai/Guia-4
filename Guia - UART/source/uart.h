@@ -19,7 +19,6 @@
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
-#define CPU_MK64FN1M0VLL12
 
 #if defined(CPU_MK64FN1M0VLL12) || defined(CPU_MK64FX512VLL12)
 	#define UART_CANT_IDS   5
@@ -45,6 +44,7 @@ typedef struct {
 	bool data_9bits;
     bool parity_type;     
     bool double_stop_bit;
+    bool use_fifo;
     uint8_t bit_rate;    // Bits por segundo
     //etc
 } uart_cfg_t;
