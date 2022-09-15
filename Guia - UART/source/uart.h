@@ -108,6 +108,23 @@ uint8_t uartIsTxMsgComplete(uint8_t id);
 
 
 /*******************************************************************************
+*                                                                              *
+*                               UART BLOQUEANTE                                *
+*                                                                              *
  ******************************************************************************/
+enum {
+	UART2_RTS_b_PIN,
+	UART2_CTS_b_PIN,
+	UART2_RX_PIN,
+	UART2_TX_PIN
+};
+
+
+void uartInitBloqueante (uint8_t id, uart_cfg_t config);
+
+
+void UART_Send_Data(unsigned char tx_data, uint8_t id);
+
+
 
 #endif // _UART_H_

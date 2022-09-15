@@ -59,6 +59,8 @@ void UART_SetDataSize(UART_Type * uartX_ptr, bool data_9bits);
 void UART_SetStopBit(UART_Type * uartX_ptr, bool double_stop_bit);
 
 void UART_EnableTxRx(UART_Type *uart);
+
+void UART_SetEnableIRQ(uint8_t id);
  
 
 static UART_Type* const UART_ptrs[] = UART_BASE_PTRS;		// { UART0, UART1, UART2, UART3, UART4, UART5 } (Ver MK64F12.h)
@@ -83,24 +85,27 @@ void uartInit (uint8_t id, uart_cfg_t config)
 		return;
   	}
 
+	//******************************** CLOCK GATING ***********************************//
+
 	UART_EnableClockGating(id);			// Clock gating para la UART
 	
-	// PIN SETUP
+	//********************************* PIN SETUP ************************************//
+	
 	UART_Type* uartX_ptr = UART_ptrs[id];
 	PORT_Type* port_ptr = addr_arrays[id];
-	static const pin_t UARTX_TX_PIN = TX_PINS[id];
-	static const pin_t UARTX_RX_PIN = RX_PINS[id];
-
-	// TODO: Cambiar el MUX y IRQC
+	pin_t UARTX_TX_PIN = TX_PINS[id];
+	pin_t UARTX_RX_PIN = RX_PINS[id];
 	// TX:
-	port_ptr->PCR[UARTX_TX_PIN]=0x0; //Clear all bits
-	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_MUX(PORT_mAlt3); //Set MUX to UART
-	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_IRQC(PORT_eDisabled); //Disable Port interrupts
+	port_ptr->PCR[UARTX_TX_PIN] = 0x0; //Clear all bits
+	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_MUX(0b11); //Set MUX to UART
+	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_IRQC(0b0000); //Disable Port interrupts
 	
 	// RX:
-	port_ptr->PCR[UARTX_RX_PIN]=0x0; //Clear all bits
-	port_ptr->PCR[UARTX_RX_PIN]|=PORT_PCR_MUX(PORT_mAlt3); //Set MUX to UART0
-	port_ptr->PCR[UARTX_RX_PIN]|=PORT_PCR_IRQC(PORT_eDisabled); //Disable Port interrupts
+	port_ptr->PCR[UARTX_RX_PIN]= 0x0; //Clear all bits
+	port_ptr->PCR[UARTX_RX_PIN]|=PORT_PCR_MUX(0b11); //Set MUX to UART0
+	port_ptr->PCR[UARTX_RX_PIN]|=PORT_PCR_IRQC(0b0000); //Disable Port interrupts
+
+	//*******************************************************************************//
 
 	//52.8.3 Initialization sequence (non ISO-7816)  -----> REFERENCE MANUAL
 	// C1: DATA
@@ -111,44 +116,40 @@ void uartInit (uint8_t id, uart_cfg_t config)
 	 * Deshabilito la UART para configurar sin problemas
 	 * FIXME: --> Si no anda, hay que deshabilitar las interrupciones tambien
 	*/
+
 	// Deshabilito comunicación
 	UART_DisableTxRx(uartX_ptr);
 
-	uartX_ptr->C1 = 0x0;	// Clear C1
+	// Limpio por si hay basura en C1 (C1 es DATA)
+	uartX_ptr->C1 = 0x0;	
 
+	// Seteo el BaudRate (diapositiva de Dani)
 	UART_SetBaudRate(uartX_ptr, config.baud_rate);
 
+	// Seteo si hay paridad y que tipo
 	UART_SetParity(uartX_ptr, config.want_parity, config.parity_type);
 
+	// Me fijo si la DATA es de 8 o 9 bits 
 	UART_SetDataSize(uartX_ptr, config.data_9bits);
 
+	// Seteo si el stop es de 1 o 2 bits 	
 	UART_SetStopBit(uartX_ptr, config.double_stop_bit);
 
+	// Habilito la interrupcion
+	UART_SetEnableIRQ(id);
+
+
 	// TODO: 
-	//- habilitar puertos
-	//- habilitar interrupción dedicada
 	//- MODOS: bloq vs no
+
+	
+	uart_is_used[id] = true;
 
 	// Habilito comunicación
 	UART_EnableTxRx(uartX_ptr);
-
-	/*
-	switch(id) { // enable interrupts!
-	case 0: NVIC_EnableIRQ(UART0_RX_TX_IRQn); break;
-	case 1: NVIC_EnableIRQ(UART1_RX_TX_IRQn); break;
-	case 2: NVIC_EnableIRQ(UART2_RX_TX_IRQn); break;
-	case 3: NVIC_EnableIRQ(UART3_RX_TX_IRQn); break;
-	case 4: NVIC_EnableIRQ(UART4_RX_TX_IRQn); break;
-	default: break;
-	}
-
-	systick_init();
-	systick_add_callback(uart_periodic, SYSTICK_HZ_TO_RELOAD(100), PERIODIC);
-	uart_is_used[id] = true;
-	
-	
-	*/
 }
+
+
 
 
 
@@ -166,17 +167,22 @@ uint8_t uartIsRxMsg(uint8_t id){
  * @return Quantity of received bytes
 */
 uint8_t uartGetRxMsgLength(uint8_t id){
+	//if (id >= UART_N_IDS)
+	//	return 0;
 
+	//return rx_q[id].len;
 }
 
-/**
- * @brief Read a received message. Non-Blocking
+/****
+ * @brief 
  * @param id UART's number
  * @param msg Buffer to paste the received bytes
  * @param cant Desired quantity of bytes to be pasted
  * @return Real quantity of pasted bytes
 */
 uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
+
+
 
 }
 
@@ -188,7 +194,10 @@ uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
  * @return Real quantity of bytes to be transfered
 */
 uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
-
+	for(uint8_t i = 0; i < cant; i++){
+		UART_Send_Data(id, msg[i]);
+		return 1;
+	}
 }
 
 /**
@@ -198,7 +207,36 @@ uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
 */
 uint8_t uartIsTxMsgComplete(uint8_t id){
 
+
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*******************************************************************************
@@ -251,7 +289,7 @@ void UART_DisableTxRx(UART_Type *uart){
  * @param uart UART peripheral base pointer
  */
 void UART_EnableTxRx(UART_Type *uart){
-	uart->C2 = (UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK);
+	uart-> C2 = (UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK);
 }
 
 /**
@@ -324,4 +362,75 @@ void UART_SetStopBit(UART_Type * uartX_ptr, bool double_stop_bit){
 	}
 }
 
-//UART2->S2 |= UART_S2_MSBF(0); //  0 = LSB first ; 1 = MSB first
+
+/**
+ * @brief Set the interruption
+ * @param id UART to enable interruption
+ */
+void UART_SetEnableIRQ(uint8_t id)
+{
+	switch(id) { 										//habilito interrupciones y me fijo en cual fue.
+		case 0:
+			NVIC_EnableIRQ(UART0_RX_TX_IRQn); 			//PPT DE DANI PAG 20
+			break;
+		case 1:
+			NVIC_EnableIRQ(UART1_RX_TX_IRQn);
+			break;
+		case 2:
+			NVIC_EnableIRQ(UART2_RX_TX_IRQn);
+			break;
+		case 3:
+			NVIC_EnableIRQ(UART3_RX_TX_IRQn);
+			break;
+		case 4:
+			NVIC_EnableIRQ(UART4_RX_TX_IRQn);
+			break;
+		default:
+			break;
+	}
+}
+
+
+
+
+
+
+/*******************************************************************************
+*                                                                              *
+*                               UART BLOQUEANTE                                *
+*                                                                              *
+ ******************************************************************************/
+void uartInitBloqueante (uint8_t id, uart_cfg_t config)
+{
+	SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
+
+	PORTD->PCR[UART2_RX_PIN] = (uint32_t)0;
+	PORTD->PCR[UART2_RX_PIN] = PORT_PCR_MUX(0b11); //ALT3
+	PORTD->PCR[UART2_TX_PIN] = (uint32_t)0;
+	PORTD->PCR[UART2_TX_PIN] = PORT_PCR_MUX(0b11); //ALT3
+
+	UART2->C1 |= UART_C1_PE(1) | UART_C1_PT(0); // activo paridad par
+	UART2->S2 |= UART_S2_MSBF(0); //  0 = LSB first ; 1 = MSB first
+
+	UART2->C5 &= ~UART_C5_TDMAS_MASK;
+	UART2->C2 = UART_C2_TE_MASK;
+
+	UART_SetBaudRate(UART2, 9600);
+
+}
+
+
+void UART_Send_Data(unsigned char tx_data, uint8_t id)
+{
+	 while(((UART2->S1) & UART_S1_TDRE_MASK) == 0); //Puedo Transmitir ? !!bloqueante!!
+	 UART2->D = tx_data; // Transmito
+}
+
+
+
+/*
+unsigned char UART_Recieve_Data(void)
+{
+	while(((UART0->S1)& UART_S1_RDRF_MASK) ==0); // Espero recibir un caracter
+	return(UART0->D); //Devuelvo el caracter recibido
+}*/

@@ -1,62 +1,47 @@
 /***************************************************************************//**
-  @file     App.c
-  @brief    Application functions
-  @author   Nicolás Magliola
+  @file     SysTick.h
+  @brief    SysTick driver
+  @author   Nicol�s Magliola
  ******************************************************************************/
+
+#ifndef _SYSTICK_H_
+#define _SYSTICK_H_
 
 /*******************************************************************************
  * INCLUDE HEADER FILES
  ******************************************************************************/
 
-#include "board.h"
-#include "gpio.h"
-#include "uart.h"
+#include <stdbool.h>
 
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
 
-static const char message[] = "The quick brown fox jumps over the lazy dog";
-
-/*******************************************************************************
- * FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE
- ******************************************************************************/
-
-static void delayLoop(uint32_t veces);
-
+#define SYSTICK_ISR_FREQUENCY_HZ 1000U
 
 
 /*******************************************************************************
- *******************************************************************************
-                        GLOBAL FUNCTION DEFINITIONS
- *******************************************************************************
+ * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/
-
-/* Función que se llama 1 vez, al comienzo del programa */
-void App_Init (void)
-{
-    uart_cfg_t configuration;
-    uartInitBloqueante(0, configuration);
-
-}
-
-/* Función que se llama constantemente en un ciclo infinito */
-void App_Run (void)
-{
-    for (int i=0; i<strlen(message); i++) {
-		UART_Send_Data(message[i], 0);
-	}
-}
-
 
 /*******************************************************************************
- *******************************************************************************
-                        LOCAL FUNCTION DEFINITIONS
- *******************************************************************************
+ * VARIABLE PROTOTYPES WITH GLOBAL SCOPE
  ******************************************************************************/
 
+/*******************************************************************************
+ * FUNCTION PROTOTYPES WITH GLOBAL SCOPE
+ ******************************************************************************/
+
+/**
+ * @brief Initialize SysTic driver
+ * @param funcallback Function to be call every SysTick
+ * @return Initialization and registration succeed
+ */
+bool SysTick_Init (void (*funcallback)(void));
 
 
 /*******************************************************************************
  ******************************************************************************/
+
+#endif // _SYSTICK_H_
