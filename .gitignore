@@ -3,17 +3,3 @@
 Guia - UART/.gitignore
 Guia - UART/.project
 Guia - UART/Debug/
-Guia - UART/Debug/Blink_Debug_library.ld
-Guia - UART/Debug/Blink_Debug_memory.ld
-Guia - UART/Debug/makefile
-Guia - UART/Debug/objects.mk
-Guia - UART/Debug/sources.mk
-Guia - UART/Debug/SDK/CMSIS/subdir.mk
-Guia - UART/Debug/SDK/CMSIS/system_MK64F12.o
-Guia - UART/Debug/SDK/startup/hardware.o
-Guia - UART/Debug/SDK/startup/main.o
-Guia - UART/Debug/SDK/startup/startup_mk64f12.o
-Guia - UART/Debug/SDK/startup/semihost_hardfault.o
-Guia - UART/Debug/SDK/startup/subdir.mk
-Guia - UART/Debug/source/App.o
-Guia - UART/Debug/source/subdir.mk
