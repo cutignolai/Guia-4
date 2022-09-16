@@ -64,7 +64,7 @@ void UART_SetEnableIRQ(uint8_t id);
 
 void UART_Send_Data(uint8_t id, unsigned char tx_data);
 
-unsigned char UART_Recieve_Data(void);
+unsigned char UART_Recieve_Data(uint8_t id);
  
 
 /***********************************************************************************************************
@@ -157,15 +157,19 @@ uint8_t uartIsRxMsg(uint8_t id){
 
 
 uint8_t uartGetRxMsgLength(uint8_t id){
-	
+	//hacer
 }
 
 
 uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
+	char Read_Array[cant];										//PREGUNTAR SI ESTA BIEN!!!!
 	if (id >= UART_N_IDS){
 		return false;
 	}
-
+	for(uint8_t i = 0; i < cant; i++){
+		msg[i] = UART_Recieve_Data(id);
+	}
+	return true;
 
 }
 
@@ -188,29 +192,6 @@ uint8_t uartIsTxMsgComplete(uint8_t id){
 	}
 	return all_bytes_were_transfered;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -347,7 +328,6 @@ void UART_SetEnableIRQ(uint8_t id)
 
 
 //RE BLOQUEANTE
-
 void UART_Send_Data(uint8_t id, unsigned char tx_data){
 	UART_Type* uart = UART_ptrs[id];
 	while(((uart->S1)& UART_S1_TDRE_MASK) ==0); //Puedo Transmitir ?
@@ -355,12 +335,10 @@ void UART_Send_Data(uint8_t id, unsigned char tx_data){
 }
 
 
-
-unsigned char UART_Recieve_Data(void){
-	while(((UART0 -> S1) & UART_S1_RDRF_MASK) == 0); // Espero recibir un caracter
-	return(UART0->D); //Devuelvo el caracter recibido
+//RE BLOQUEANTE
+unsigned char UART_Recieve_Data(uint8_t id){
+	UART_Type* uart = UART_ptrs[id];
+	while(((uart -> S1) & UART_S1_RDRF_MASK) == 0); // Espero recibir un caracter
+	return(uart->D); //Devuelvo el caracter recibido
 }
-
-
-
 
