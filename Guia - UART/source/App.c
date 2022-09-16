@@ -51,9 +51,6 @@ void UART_SetBaudRate (UART_Type* uart, uint32_t baudrate);
 void App_Init (void)
 {
 	gpioMode(PIN_LED_GREEN, OUTPUT);
-	gpioMode(PIN_LED_BLUE, OUTPUT);
-	gpioWrite(PIN_LED_BLUE, LOW);
-	gpioWrite(PIN_LED_GREEN, LOW);
 	uartInit();
 }
 
@@ -61,9 +58,9 @@ void App_Init (void)
 void App_Run (void)
 {
 	
-	if(x < 20)
+	if(x < 100000)
 	{
-		gpioWrite(PIN_LED_BLUE, LOW);
+
 		gpioToggle(PIN_LED_GREEN);
 		for (int i=0; i<strlen(message); i++)
 		{
@@ -74,11 +71,6 @@ void App_Run (void)
 		x += 1;
 	}
 
-	else
-	{
-		gpioWrite(PIN_LED_GREEN, LOW);
-		gpioToggle(PIN_LED_BLUE);
-	}
 }
 
 

@@ -53,22 +53,23 @@
 void uartInit (void)
 {
 	// Clock gating
-	SIM->SCGC4 |= SIM_SCGC4_UART0_MASK;
+	SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
 
 	// Pin Setup
-	PORTA->PCR[3] = (uint32_t)0;
-	PORTA->PCR[3] = PORT_PCR_MUX(0b11);
-	PORTA->PCR[2] = (uint32_t)0;
-	PORTA->PCR[2] = PORT_PCR_MUX(0b11); 
+	PORTD->PCR[2] = (uint32_t)0;
+	PORTD->PCR[2] = PORT_PCR_MUX(0b11);
+	PORTD->PCR[3] = (uint32_t)0;
+	PORTD->PCR[3] = PORT_PCR_MUX(0b11);
 
-	UART0->C1 |= UART_C1_PE(1) | UART_C1_PT(0); 
+	UART2->C1 |= UART_C1_PE(1) | UART_C1_PT(0);
 
-	UART0->S2 |= UART_S2_MSBF(0);
+	UART2->S2 |= UART_S2_MSBF(0);
 
-	UART0->C5 &= ~UART_C5_TDMAS_MASK;
-	UART0->C2 = UART_C2_TE_MASK;
+	UART2->C5 &= ~UART_C5_TDMAS_MASK;
+	UART2->C2 = UART_C2_TE_MASK;
 
-	UART_SetBaudRate(UART0, 9600);
+	UART_SetBaudRate(UART2, 9600);
+
 }
 
 
@@ -76,8 +77,8 @@ void uartInit (void)
 
 void UART_Send_Data(unsigned char tx_data)
 {
-	 while(((UART0->S1) & UART_S1_TDRE_MASK) == 0); //Puedo Transmitir ? !!bloqueante!!
-	 UART0->D = tx_data; // Transmito
+	 while(((UART2->S1) & UART_S1_TDRE_MASK) == 0);
+	 UART2->D = tx_data;
 }
 
 
