@@ -162,7 +162,6 @@ uint8_t uartGetRxMsgLength(uint8_t id){
 
 
 uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
-	char Read_Array[cant];										//PREGUNTAR SI ESTA BIEN!!!!
 	if (id >= UART_N_IDS){
 		return false;
 	}
