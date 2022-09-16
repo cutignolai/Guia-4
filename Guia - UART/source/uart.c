@@ -61,6 +61,10 @@ void UART_SetStopBit(UART_Type * uartX_ptr, bool double_stop_bit);
 void UART_EnableTxRx(UART_Type *uart);
 
 void UART_SetEnableIRQ(uint8_t id);
+
+void UART_Send_Data(uint8_t id, unsigned char tx_data);
+
+unsigned char UART_Recieve_Data(void);
  
 
 /***********************************************************************************************************
@@ -73,6 +77,8 @@ static PORT_Type * const addr_arrays[] = {PORTA, PORTC, PORTD, PORTC, PORTE};
 static const pin_t TX_PINS[] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX};
 static const pin_t RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX};
 static bool uart_is_used[UART_CANT_IDS] = {false, false, false, false, false};
+
+static bool all_bytes_were_transfered = true;
 
 
 
@@ -143,41 +149,45 @@ void uartInit (uint8_t id, uart_cfg_t config)
 }
 
 
+
+
 uint8_t uartIsRxMsg(uint8_t id){
+	return uartGetRxMsgLength(id) > 0;
 }
 
 
 uint8_t uartGetRxMsgLength(uint8_t id){
-	//if (id >= UART_N_IDS)
-	//	return 0;
-
-	//return rx_q[id].len;
+	
 }
 
 
 uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
-
+	if (id >= UART_N_IDS){
+		return false;
+	}
 
 
 }
 
-
+//mando la data
 uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
 	for(uint8_t i = 0; i < cant; i++){
 		UART_Send_Data(id, msg[i]);
-		return 1;
 	}
+	return true;
 }
 
-
+//TC me dice si se esta mandando datos, si todavia esta escribiendo, entonces TC esta en 0. Si ya no transmite mas entonces esta en 1.
 uint8_t uartIsTxMsgComplete(uint8_t id){
-
-
-
-
+	UART_Type* uart = UART_ptrs[id];
+	if(((uart->S1) & UART_S1_TC_MASK) == 0){
+		all_bytes_were_transfered = false;
+	}
+	else{
+		all_bytes_were_transfered = true;
+	}
+	return all_bytes_were_transfered;
 }
-
-
 
 
 
@@ -335,6 +345,21 @@ void UART_SetEnableIRQ(uint8_t id)
 }
 
 
+
+//RE BLOQUEANTE
+
+void UART_Send_Data(uint8_t id, unsigned char tx_data){
+	UART_Type* uart = UART_ptrs[id];
+	while(((uart->S1)& UART_S1_TDRE_MASK) ==0); //Puedo Transmitir ?
+	uart->D = tx_data; // Transmito
+}
+
+
+
+unsigned char UART_Recieve_Data(void){
+	while(((UART0 -> S1) & UART_S1_RDRF_MASK) == 0); // Espero recibir un caracter
+	return(UART0->D); //Devuelvo el caracter recibido
+}
 
 
 
