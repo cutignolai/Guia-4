@@ -79,6 +79,7 @@ static const pin_t RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX
 static bool uart_is_used[UART_CANT_IDS] = {false, false, false, false, false};
 
 static bool all_bytes_were_transfered = true;
+static unsigned int total = 0;
 
 
 
@@ -157,7 +158,7 @@ uint8_t uartIsRxMsg(uint8_t id){
 
 
 uint8_t uartGetRxMsgLength(uint8_t id){
-	//hacer
+	return total;
 }
 
 
@@ -165,11 +166,13 @@ uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
 	if (id >= UART_N_IDS){
 		return false;
 	}
-	for(uint8_t i = 0; i < cant; i++){
-		msg[i] = UART_Recieve_Data(id);
-	}
+	else{
+		total = ( cant / sizeof(char) );
+		for(uint8_t i = 0; i < total; i++){
+			msg[i] = UART_Recieve_Data(id);
+		}
 	return true;
-
+	}
 }
 
 //mando la data
