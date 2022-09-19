@@ -187,10 +187,10 @@ uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
 uint8_t uartIsTxMsgComplete(uint8_t id){
 	UART_Type* uart = UART_ptrs[id];
 	if(((uart->S1) & UART_S1_TC_MASK) == 0){
-		all_bytes_were_transfered = true;
+		all_bytes_were_transfered = false;
 	}
 	else{
-		all_bytes_were_transfered = false;
+		all_bytes_were_transfered = true;
 	}
 	return all_bytes_were_transfered;
 }
