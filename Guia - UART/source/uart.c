@@ -10,12 +10,14 @@
 #include "uart.h"
 #include "gpio.h"
 #include "board.h"
+#include "fifo.h"
 
 /!*******************************************************************************
  * 					CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
 
 #define UART_HAL_DEFAULT_BAUDRATE 9600
+#define TX_RX	2
 
 //TX
 #define UART0_TX		DIO_20
@@ -66,6 +68,7 @@ void UART_Send_Data(uint8_t id, unsigned char tx_data);
 
 unsigned char UART_Recieve_Data(uint8_t id);
  
+ void uart_irq_handler(uint8_t id);
 
 /***********************************************************************************************************
  * 													VARIABLES
@@ -74,13 +77,14 @@ unsigned char UART_Recieve_Data(uint8_t id);
 static UART_Type* const UART_ptrs[] = UART_BASE_PTRS;		// { UART0, UART1, UART2, UART3, UART4, UART5 } (Ver MK64F12.h)
 static PORT_Type * const addr_arrays[] = {PORTA, PORTC, PORTD, PORTC, PORTE};
 
-static const pin_t TX_PINS[] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX};
-static const pin_t RX_PINS[] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX};
+static const pin_t TX_PINS[UART_CANT_IDS] = {UART0_TX, UART1_TX, UART2_TX, UART3_TX, UART4_TX};
+static const pin_t RX_PINS[UART_CANT_IDS] = {UART0_RX, UART1_RX, UART2_RX, UART3_RX, UART4_RX};
 static bool uart_is_used[UART_CANT_IDS] = {false, false, false, false, false};
 
 static bool all_bytes_were_transfered = true;
-static unsigned int total = 0;
 
+static fifo_id_t tx_fifo [UART_CANT_IDS];
+static fifo_id_t rx_fifo [UART_CANT_IDS];
 
 
 /***********************************************************************************************************
@@ -101,17 +105,17 @@ void uartInit (uint8_t id, uart_cfg_t config)
 
 	UART_Type* uartX_ptr = UART_ptrs[id];
 	PORT_Type* port_ptr = addr_arrays[id];
-	pin_t UARTX_TX_PIN = TX_PINS[id];
-	pin_t UARTX_RX_PIN = RX_PINS[id];
+	pin_t uart_tx_pin = TX_PINS[id];
+	pin_t uart_rx_pin = RX_PINS[id];
 	// TX:
-	port_ptr->PCR[UARTX_TX_PIN] = 0x0; //Clear all bits
-	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_MUX(0b11); //Set MUX to UART
-	port_ptr->PCR[UARTX_TX_PIN]|=PORT_PCR_IRQC(0b0000); //Disable Port interrupts
+	port_ptr->PCR[uart_tx_pin] = 0x0; //Clear all bits
+	port_ptr->PCR[uart_tx_pin]|=PORT_PCR_MUX(0b11); //Set MUX to UART
+	port_ptr->PCR[uart_tx_pin]|=PORT_PCR_IRQC(0b0000); //Disable Port interrupts
 	
 	// RX:
-	port_ptr->PCR[UARTX_RX_PIN]= 0x0; //Clear all bits
-	port_ptr->PCR[UARTX_RX_PIN]|=PORT_PCR_MUX(0b11); //Set MUX to UART0
-	port_ptr->PCR[UARTX_RX_PIN]|=PORT_PCR_IRQC(0b0000); //Disable Port interrupts
+	port_ptr->PCR[uart_rx_pin]= 0x0; //Clear all bits
+	port_ptr->PCR[uart_rx_pin]|=PORT_PCR_MUX(0b11); //Set MUX to UART0
+	port_ptr->PCR[uart_rx_pin]|=PORT_PCR_IRQC(0b0000); //Disable Port interrupts
 
 
 
@@ -142,11 +146,8 @@ void uartInit (uint8_t id, uart_cfg_t config)
 	//* Habilito comunicación
 	UART_EnableTxRx(uartX_ptr);
 
-	//! *********************************
-	//! 			TODO: 				*
-	//! 		MODOS: bloq vs no		*
-	//! *********************************
-	
+	tx_fifo [id] = FIFO_GetId();				//Inicializo fifo de transmisor
+	rx_fifo [id] = FIFO_GetId();				//Inicializo fifo de receptor	
 }
 
 
@@ -158,29 +159,43 @@ uint8_t uartIsRxMsg(uint8_t id){
 
 
 uint8_t uartGetRxMsgLength(uint8_t id){
-	return total;
+	/*
+	 * FIFO_GetBufferLength no me da el largo de la palabra recibida, me da lo que hay en el buffer. Puede llegar otra palabra y todavia estar procesando la anterior --> mas length
+	 * FIXME: --> Fijarse como guardar bien bien el largo de la palabra, IGUAL NO SE VA A USAAR EN ESTE TP
+	*/
+	return FIFO_GetBufferLength(id);
 }
 
 
 uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
-	if (id >= UART_N_IDS){
+	if (id >= UART_CANT_IDS){
 		return false;
 	}
 	else{
-		total = ( cant / sizeof(char) );
-		for(uint8_t i = 0; i < total; i++){
-			msg[i] = UART_Recieve_Data(id);
+		UART_Type* uart = UART_ptrs[id];
+		size_t long_buff_rx = FIFO_ReadFromBuffer(rx_fifo[id], msg, cant);
+		if(long_buff_rx < cant){
+			return false;
 		}
-	return true;
+	return (long_buff_rx < cant) ? long_buff_rx : cant;
 	}
 }
 
 //mando la data
 uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
-	for(uint8_t i = 0; i < cant; i++){
-		UART_Send_Data(id, msg[i]);
+	if (id >= UART_CANT_IDS){
+		return false;
 	}
-	return true;
+	else{
+		UART_Type* uart = UART_ptrs[id];
+		size_t long_buff_tx = FIFO_WriteToBuffer(tx_fifo[id], msg, cant);
+		if(long_buff_tx < cant){
+			return false;
+		}
+		//HABILITO TRANSMISION
+		uart->C2 |= UART_C2_TIE_MASK;
+		return true;
+	}
 }
 
 //TC me dice si se esta mandando datos, si todavia esta escribiendo, entonces TC esta en 0. Si ya no transmite mas entonces esta en 1.
@@ -242,7 +257,7 @@ void UART_DisableTxRx(UART_Type *uart){
 	 * Deshabilito la UART para configurar sin problemas
 	 * FIXME: --> Si no anda, hay que deshabilitar las interrupciones tambien
 	*/
-	uart->C2 &= !( UART_C2_TE_MASK | UART_C2_RE_MASK);
+	uart->C2 &= ~( UART_C2_TE_MASK | UART_C2_RE_MASK);
 }
 
 
@@ -274,11 +289,11 @@ void UART_SetParity(UART_Type * uartX_ptr, bool want_parity, bool parity_type){
 			uartX_ptr->C1 |= UART_C1_PT_MASK;
 		}
 		else{
-			uartX_ptr->C1 &= !UART_C1_PT_MASK;
+			uartX_ptr->C1 &= ~UART_C1_PT_MASK;
 		}
 	} 
 	else{
-		uartX_ptr->C1 &= !UART_C1_PE_MASK;
+		uartX_ptr->C1 &= ~UART_C1_PE_MASK;
 	}
 	
 }
@@ -289,7 +304,7 @@ void UART_SetDataSize(UART_Type * uartX_ptr, bool data_9bits){
 		uartX_ptr->C1 |= UART_C1_M_MASK;
 	}
 	else{
-		uartX_ptr->C1 &= !UART_C1_M_MASK;
+		uartX_ptr->C1 &= ~UART_C1_M_MASK;
 	}
 }
 
@@ -299,7 +314,7 @@ void UART_SetStopBit(UART_Type * uartX_ptr, bool double_stop_bit){
 		uartX_ptr->BDH |= UART_BDH_SBNS_MASK;
 	}
 	else{
-		uartX_ptr->BDH &= !UART_BDH_SBNS_MASK;
+		uartX_ptr->BDH &= ~UART_BDH_SBNS_MASK;
 	}
 }
 
@@ -327,8 +342,9 @@ void UART_SetEnableIRQ(uint8_t id)
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+/*
 //RE BLOQUEANTE
 void UART_Send_Data(uint8_t id, unsigned char tx_data){
 	UART_Type* uart = UART_ptrs[id];
@@ -340,7 +356,39 @@ void UART_Send_Data(uint8_t id, unsigned char tx_data){
 //RE BLOQUEANTE
 unsigned char UART_Recieve_Data(uint8_t id){
 	UART_Type* uart = UART_ptrs[id];
-	while(((uart -> S1) & UART_S1_RDRF_MASK) == 0); // Espero recibir un caracter
-	return(uart->D); //Devuelvo el caracter recibido
+	while(((uart -> S1) & UART_S1_RDRF_MASK) == 0); 	// Espero recibir un caracter
+	return(uart->D); 									//Devuelvo el caracter recibido
+}
+*/
+
+
+
+//INTERRUPCIONES
+void uart_irq_handler(uint8_t id){
+	/*
+	 * INTERRUPCIONES DE LA UART
+	 * FIXME: --> Fijarse si poner flags de read and write. Que hago si la transmision o recepcion no fueron exitosas?
+	*/
+	UART_Type* const uart = UART_ptrs[id];
+
+	//TRANSMISOR
+	if ((uart->S1 & UART_S1_TDRE_MASK) && (!FIFO_IsBufferEmpty(tx_fifo[id]))) {										//si no esta vacio entonces tengo para transmitir
+		bool transmition_correct = FIFO_PullFromBuffer(tx_fifo[id], &(uart -> D);		// Transmito	
+		//FLAGS FALTAN??
+	}
+
+
+	//RECEPTOR
+	if ((uart -> S1 & UART_S1_RDRF_MASK) && (!FIFO_IsBufferEmpty(rx_fifo[id]))) {
+		bool reception_read = FIFO_PushToBuffer(rx_fifo[id], uart -> D);			//Guardo caracter recibido
+		//FLAGS FALTAN??
+	}
 }
 
+__ISR__ UART0_RX_TX_IRQHandler(void) {uart_irq_handler(0);}
+__ISR__ UART1_RX_TX_IRQHandler(void) {uart_irq_handler(1);}
+__ISR__ UART2_RX_TX_IRQHandler(void) {uart_irq_handler(2);}
+__ISR__ UART3_RX_TX_IRQHandler(void) {uart_irq_handler(3);}
+__ISR__ UART4_RX_TX_IRQHandler(void) {uart_irq_handler(4);}
+//PONER UN IFDEF
+__ISR__ UART5_RX_TX_IRQHandler(void) {uart_irq_handler(5);}
