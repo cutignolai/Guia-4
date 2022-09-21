@@ -370,19 +370,32 @@ void uart_irq_handler(uint8_t id){
 	 * FIXME: --> Fijarse si poner flags de read and write. Que hago si la transmision o recepcion no fueron exitosas?
 	*/
 	UART_Type* const uart = UART_ptrs[id];
-	mp=UART0->S1
+	
+	/************************************
+	 * 		No olvidar !!				*
+	 * 									*
+	 * 		Para borrar el Flag RDRF	*
+	 * 		1 Read Status				*
+	 * 		2 Read Data					*
+	 * 									*
+	 * 		En ese orden				*
+	 *									*
+	 ************************************/
 
-
-	//TRANSMISOR
-	if ((uart->S1 & UART_S1_TDRE_MASK) && (!FIFO_IsBufferEmpty(tx_fifo[id]))) {										//si no esta vacio entonces tengo para transmitir
+	// Interrumpido por el TRANSMISOR
+	// Borra el flag: Leyendo S1 con TDRE
+	if ((uart->S1 & UART_S1_TDRE_MASK) && (!FIFO_IsBufferEmpty(tx_fifo[id]))) {			// Si no esta vacio entonces tengo para transmitir
 		bool transmition_correct = FIFO_PullFromBuffer(tx_fifo[id], &(uart -> D));		// Transmito	
-		//FLAGS FALTAN??
+	}
+	else{
+		uart->C2 &= ~UART_C2_TIE_MASK;													// Si el buffer esta vacio, entonces apago las interrupciones de transmision
 	}
 
 
-	//RECEPTOR
+	// Interrumpido por el RECEPTOR
+	// Borra el flag: Leyendo S1 with RDRF y leyendo D 
 	if ((uart -> S1 & UART_S1_RDRF_MASK) && (!FIFO_IsBufferEmpty(rx_fifo[id]))) {
-		bool reception_read = FIFO_PushToBuffer(rx_fifo[id], uart -> D);			//Guardo caracter recibido
+		bool reception_read = FIFO_PushToBuffer(rx_fifo[id], uart -> D);				// Guardo caracter recibido
 		//FLAGS FALTAN??
 	}
 }
@@ -392,5 +405,5 @@ __ISR__ UART1_RX_TX_IRQHandler(void) {uart_irq_handler(1);}
 __ISR__ UART2_RX_TX_IRQHandler(void) {uart_irq_handler(2);}
 __ISR__ UART3_RX_TX_IRQHandler(void) {uart_irq_handler(3);}
 __ISR__ UART4_RX_TX_IRQHandler(void) {uart_irq_handler(4);}
-//PONER UN IFDEF
+// TODO: PONER UN IFDEF
 __ISR__ UART5_RX_TX_IRQHandler(void) {uart_irq_handler(5);}
