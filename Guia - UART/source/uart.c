@@ -175,7 +175,7 @@ uint8_t uartReadMsg(uint8_t id, char* msg, uint8_t cant){
 		UART_Type* uart = UART_ptrs[id];
 		size_t long_buff_rx = FIFO_ReadFromBuffer(rx_fifo[id], msg, cant);
 		if(long_buff_rx < cant){
-			return false;
+			size_t long_buff_tx = FIFO_ReadFromBuffer(tx_fifo[id], msg[long_buff_tx], cant - long_buff_tx);			//me pisa El First In  ---> TODO: PREGUNTAR OLI
 		}
 	return (long_buff_rx < cant) ? long_buff_rx : cant;
 	}
@@ -190,7 +190,7 @@ uint8_t uartWriteMsg(uint8_t id, const char* msg, uint8_t cant){
 		UART_Type* uart = UART_ptrs[id];
 		size_t long_buff_tx = FIFO_WriteToBuffer(tx_fifo[id], msg, cant);
 		if(long_buff_tx < cant){
-			return false;
+			size_t long_buff_tx = FIFO_WriteToBuffer(tx_fifo[id], msg[long_buff_tx], cant - long_buff_tx);			//me pisa El First In  ---> TODO: PREGUNTAR OLI
 		}
 		//HABILITO TRANSMISION
 		uart->C2 |= UART_C2_TIE_MASK;
@@ -370,10 +370,12 @@ void uart_irq_handler(uint8_t id){
 	 * FIXME: --> Fijarse si poner flags de read and write. Que hago si la transmision o recepcion no fueron exitosas?
 	*/
 	UART_Type* const uart = UART_ptrs[id];
+	mp=UART0->S1
+
 
 	//TRANSMISOR
 	if ((uart->S1 & UART_S1_TDRE_MASK) && (!FIFO_IsBufferEmpty(tx_fifo[id]))) {										//si no esta vacio entonces tengo para transmitir
-		bool transmition_correct = FIFO_PullFromBuffer(tx_fifo[id], &(uart -> D);		// Transmito	
+		bool transmition_correct = FIFO_PullFromBuffer(tx_fifo[id], &(uart -> D));		// Transmito	
 		//FLAGS FALTAN??
 	}
 
