@@ -38,8 +38,6 @@ static int x = 0;
 /*******************************************************************************
  * FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE
  ******************************************************************************/
-void UART_Send_Data(unsigned char tx_data);
-void UART_SetBaudRate (UART_Type* uart, uint32_t baudrate);
 
 /*******************************************************************************
  *******************************************************************************
@@ -58,19 +56,11 @@ void App_Init (void)
 void App_Run (void)
 {
 	
-	if(x < 100000)
+	if (((UART2->S1) & UART_S1_RDRF_MASK))
 	{
-
-		gpioToggle(PIN_LED_GREEN);
-		for (int i=0; i<strlen(message); i++)
-		{
-			UART_Send_Data(message[i]);
-		}
-		UART_Send_Data(CR);
-		UART_Send_Data(LF);
-		x += 1;
+		char ch=UART2->D;
+		printf("%c",ch);
 	}
-
 }
 
 

@@ -3,8 +3,9 @@
   @brief    UART Driver for K64F. Non-Blocking and using FIFO feature
   @author   Oli, Cuty y Micho
  ******************************************************************************/
-
+#include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include "MK64F12.h"
 #include "hardware.h"
 #include "uart.h"
@@ -46,6 +47,9 @@
  * VARIABLE PROTOTYPES WITH GLOBAL SCOPE
  ******************************************************************************/
 
+static const char message[] = "The quick brown fox jumps over the lazy dog";
+
+
 /*******************************************************************************
  * FUNCTION PROTOTYPES WITH GLOBAL SCOPE
  ******************************************************************************/
@@ -67,6 +71,8 @@ void uartInit (void)
 
 	UART2->C5 &= ~UART_C5_TDMAS_MASK;
 	UART2->C2 = UART_C2_TE_MASK;
+
+	NVIC_EnableIRQ(UART2_RX_TX_IRQn);
 
 	UART_SetBaudRate(UART2, 9600);
 
@@ -93,5 +99,39 @@ void UART_SetBaudRate (UART_Type* uart, uint32_t baudrate) {
 	uart->BDH = UART_BDH_SBR(sbr>>8);
 	uart->BDL = UART_BDL_SBR(sbr);
 	uart->C4 = (uart->C4 & ~UART_C4_BRFA_MASK) | UART_C4_BRFA(brfa);
+}
+
+
+__ISR__ UART2_RX_TX_IRQHandler(void) {
+
+	/************************************
+	 * 		No olvidar !!				*
+	 * 									*
+	 * 		Para borrar el Flag RDRF	*
+	 * 		1 Read Status				*
+	 * 		2 Read Data					*
+	 * 									*
+	 * 		En ese orden				*
+	 *									*
+	 ************************************/
+	UART2->S1;
+
+	static int i = 0;
+
+
+	uint32_t len = strlen(message);
+
+	if(i<len){
+		UART2->D = message[i]; // Transmito
+		i++;
+	}
+	else if(i==len) {
+		UART2->D = 0x00;
+		i++;
+	}
+	else {
+		UART2->D = 0x00;
+		i=0;
+	}
 }
 
